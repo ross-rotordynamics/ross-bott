@@ -2,14 +2,29 @@
 """
 import os
 import time
+import logging
 import schedule
 import aiohttp
+import threading
+import sentry_sdk
 from github import Github as gh
 from datetime import datetime
 from aiohttp import web
-
 from gidgethub import routing, sansio
 from gidgethub import aiohttp as gh_aiohttp
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+sentry_logging = LoggingIntegration(
+    level=logging.INFO,        # Capture info and above as breadcrumbs
+    event_level=logging.INFO   # Send errors as events
+)
+sentry_sdk.init(
+    dsn="https://de5148635d84489d9451f404e2d8fb17@sentry.io/1868960",
+    integrations=[sentry_logging]
+)
+
+sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"))
+
 
 routes = web.RouteTableDef()
 router = routing.Router()
@@ -31,6 +46,7 @@ async def issue_opened_event(event, gh, *args, **kwargs):
 @routes.post("/")
 async def main(request):
     # read the GitHub webhook payload
+    logging.debug("Running main.")
     body = await request.read()
 
     # our authentication token and secret
@@ -57,6 +73,8 @@ ross_repo = g.get_repo("ross-rotordynamics/ross")
 def mark_stale_issues():
     # days limit for staled issues
     print(f'Running "mark_stale_issues" at {datetime.now()}')
+    logging.debug(f'Running "mark_stale_issues" at {datetime.now()}')
+
     LIMIT = 45
 
     issues = ross_repo.get_issues(state="open")
@@ -65,7 +83,7 @@ def mark_stale_issues():
         last_update = (datetime.today() - issue.updated_at).days
         if last_update > LIMIT:
             not_updated_issues.append(issue)
-    return
+
     # fmt: off
     stale_message = (
         f'Hi there!\n'
@@ -77,14 +95,18 @@ def mark_stale_issues():
     )
     # fmt: on
 
-    for issue in not_updated_issues:
-        issue.create_comment(stale_message)
-        issue.add_to_labels("stale")
+    # for issue in not_updated_issues:
+    #     issue.create_comment(stale_message)
+    #     issue.add_to_labels("stale")
+    print(not_updated_issues)
+    time.sleep(10)
 
 
 if __name__ == "__main__":
     print("Started app.")
-    schedule.every(1).minutes.do(mark_stale_issues)
+    # schedule.every(1).minutes.do(mark_stale_issues)
+    stale_issues_task = threading.Thread(target=mark_stale_issues)
+    stale_issues_task.start()
 
     app = web.Application()
     app.add_routes(routes)
@@ -94,7 +116,7 @@ if __name__ == "__main__":
 
     web.run_app(app, port=port)
 
-    while True:
-        schedule.run_pending()
-        time.sleep(10)
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(10)
 

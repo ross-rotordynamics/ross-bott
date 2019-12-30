@@ -1,2 +1,4 @@
 PyGithub
 schedule
+aiohttp
+gidgethub

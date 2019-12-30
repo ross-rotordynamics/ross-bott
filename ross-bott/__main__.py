@@ -5,6 +5,10 @@ import time
 import schedule
 from github import Github as gh
 from datetime import datetime
+import sentry_sdk
+sentry_sdk.init("https://de5148635d84489d9451f404e2d8fb17@sentry.io/1868960")
+
+divi0 = 1/0
 
 
 token = os.environ.get("GH_AUTH")
@@ -20,10 +24,10 @@ def mark_stale_issues():
     issues = ross_repo.get_issues(state="open")
     not_updated_issues = []
     for issue in issues:
-        last_update = (datetime.today() - issue.update_at).days
+        last_update = (datetime.today() - issue.updated_at).days
         if last_update > LIMIT:
             not_updated_issues.append(issue)
-
+    return
     # fmt: off
     stale_message = (
         f'Hi there!\n'
@@ -41,7 +45,8 @@ def mark_stale_issues():
 
 
 if __name__ == "__main__":
-    schedule.every(30).minutes.do(mark_stale_issues)
+    print("Started app.")
+    schedule.every(1).minutes.do(mark_stale_issues)
 
     while True:
         schedule.run_pending()

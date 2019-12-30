@@ -20,11 +20,12 @@ async def issue_opened_event(event, gh, *args, **kwargs):
     """
     Whenever an issue is opened, greet the author and say thanks.
     """
-    url = event.data["issue"]["comments_url"]
-    author = event.data["issue"]["user"]["login"]
-
-    message = f"Thanks for the report @{author}! I will look into it ASAP! (I'm a bot)."
-    await gh.post(url, data={"body": message})
+    pass
+    # url = event.data["issue"]["comments_url"]
+    # author = event.data["issue"]["user"]["login"]
+    #
+    # message = f"Thanks for the report @{author}! I will look into it ASAP! (I'm a bot)."
+    # await gh.post(url, data={"body": message})
 
 
 @routes.post("/")
@@ -83,6 +84,12 @@ def mark_stale_issues():
 
 if __name__ == "__main__":
     print("Started app.")
+    schedule.every(1).minutes.do(mark_stale_issues)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
+
     app = web.Application()
     app.add_routes(routes)
     port = os.environ.get("PORT")
@@ -90,8 +97,4 @@ if __name__ == "__main__":
         port = int(port)
 
     web.run_app(app, port=port)
-    schedule.every(1).minutes.do(mark_stale_issues)
 
-    while True:
-        schedule.run_pending()
-        time.sleep(10)

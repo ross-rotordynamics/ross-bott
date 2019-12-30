@@ -2,3 +2,4 @@ PyGithub
 schedule
 aiohttp
 gidgethub
+sentry_sdk

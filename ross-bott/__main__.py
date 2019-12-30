@@ -6,7 +6,7 @@ import schedule
 from github import Github as gh
 from datetime import datetime
 import sentry_sdk
-sentry_sdk.init("https://de5148635d84489d9451f404e2d8fb17@sentry.io/1868960")
+sentry_sdk.init(os.environ['SENTRY_DSN'])
 
 divi0 = 1/0
 

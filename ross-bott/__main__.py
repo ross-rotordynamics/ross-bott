@@ -86,10 +86,6 @@ if __name__ == "__main__":
     print("Started app.")
     schedule.every(1).minutes.do(mark_stale_issues)
 
-    while True:
-        schedule.run_pending()
-        time.sleep(10)
-
     app = web.Application()
     app.add_routes(routes)
     port = os.environ.get("PORT")
@@ -97,4 +93,8 @@ if __name__ == "__main__":
         port = int(port)
 
     web.run_app(app, port=port)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
 

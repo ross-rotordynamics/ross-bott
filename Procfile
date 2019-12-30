@@ -1,1 +1,1 @@
-web: python3 -m ross-bott
+worker: python3 -m ross-bott

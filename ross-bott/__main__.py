@@ -9,21 +9,20 @@ from datetime import datetime
 
 token = os.environ.get("GH_AUTH")
 g = gh(token)
-ross_repo = g.get_repo('ross-rotordynamics/ross')
+ross_repo = g.get_repo("ross-rotordynamics/ross")
 
 
 def mark_stale_issues():
     # days limit for staled issues
+    print(f'Running "mark_stale_issues" at {datetime.now()}')
     LIMIT = 45
 
-    issues = ross_repo.get_issues(state='open')
+    issues = ross_repo.get_issues(state="open")
     not_updated_issues = []
     for issue in issues:
-        if issue.title == 'ross-bott-tests':
+        last_update = (datetime.today() - issue.update_at).days
+        if last_update > LIMIT:
             not_updated_issues.append(issue)
-        # last_update = (datetime.today() - issue.update_at).days
-        # if last_update > LIMIT:
-        #     not_updated_issues.append(issue)
 
     # fmt: off
     stale_message = (
@@ -38,14 +37,12 @@ def mark_stale_issues():
 
     for issue in not_updated_issues:
         issue.create_comment(stale_message)
+        issue.add_to_labels("stale")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    schedule.every(30).minutes.do(mark_stale_issues)
+
     while True:
-        mark_stale_issues()
-        time.sleep(60)
-    # schedule.every().day.at("01:00").do(mark_stale_issues)
-    #
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(60)
+        schedule.run_pending()
+        time.sleep(10)

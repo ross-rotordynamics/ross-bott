@@ -2,6 +2,7 @@
 """
 import os
 import time
+import schedule
 import logging
 import aiohttp
 import threading
@@ -64,40 +65,46 @@ ross_repo = g.get_repo("ross-rotordynamics/ross")
 
 def mark_stale_issues():
     # days limit for staled issues
+    print(f'Running "mark_stale_issues" at {datetime.now()}')
+    logging.debug(f'Running "mark_stale_issues" at {datetime.now()}')
+    LIMIT = 45
+
+    issues = ross_repo.get_issues(state="open")
+    not_updated_issues = []
+    for issue in issues:
+        last_update = (datetime.today() - issue.updated_at).days
+        if last_update > LIMIT:
+            not_updated_issues.append(issue)
+
+    # fmt: off
+    stale_message = (
+        f'Hi there!\n'
+        f'I have marked this issue as stale because it has not had activity for {LIMIT} days.\n'
+        f'Consider the following options:\n'
+        f'- If the issue refers to a large task, break it in smaller issues that can be solved in\n'
+        f'less than {LIMIT} days;\n'
+        f'- Label the issue as `wontfix` or `wontfix for now` and close it.'
+    )
+    # fmt: on
+
+    for issue in not_updated_issues:
+        issue.create_comment(stale_message)
+        issue.add_to_labels("stale")
+    print(not_updated_issues)
+
+
+def scheduled_tasks():
+    schedule.every().day.at("10:30").do(mark_stale_issues)
     while True:
-        print(f'Running "mark_stale_issues" at {datetime.now()}')
-        logging.debug(f'Running "mark_stale_issues" at {datetime.now()}')
-        LIMIT = 45
-
-        issues = ross_repo.get_issues(state="open")
-        not_updated_issues = []
-        for issue in issues:
-            last_update = (datetime.today() - issue.updated_at).days
-            if last_update > LIMIT:
-                not_updated_issues.append(issue)
-
-        # fmt: off
-        stale_message = (
-            f'Hi there!\n'
-            f'I have marked this issue as stale because it has not had activity for {LIMIT} days.\n'
-            f'Consider the following options:\n'
-            f'- If the issue refers to a large task, break it in smaller issues that can be solved in\n'
-            f'less than {LIMIT} days;\n'
-            f'- Label the issue as `wontfix` or `wontfix for now` and close it.'
-        )
-        # fmt: on
-
-        for issue in not_updated_issues:
-            issue.create_comment(stale_message)
-            issue.add_to_labels("stale")
-        print(not_updated_issues)
-        time.sleep(60*60*24)
+        schedule.run_pending()
+        time.sleep(10)
+        print(f"App is up. Waiting to run {mark_stale_issues}")
 
 
 if __name__ == "__main__":
     print("Started app.")
-    stale_issues_task = threading.Thread(target=mark_stale_issues)
-    stale_issues_task.start()
+    scheduled_tasks_thread = threading.Thread(target=scheduled_tasks)
+    scheduled_tasks_thread.start()
 
     app = web.Application()
     app.add_routes(routes)

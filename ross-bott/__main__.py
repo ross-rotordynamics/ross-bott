@@ -3,7 +3,6 @@
 import os
 import time
 import logging
-import schedule
 import aiohttp
 import threading
 import sentry_sdk
@@ -73,7 +72,7 @@ def mark_stale_issues():
     while True:
         print(f'Running "mark_stale_issues" at {datetime.now()}')
         logging.debug(f'Running "mark_stale_issues" at {datetime.now()}')
-
+        div0 = 1 / 0
         LIMIT = 45
 
         issues = ross_repo.get_issues(state="open")
@@ -98,12 +97,11 @@ def mark_stale_issues():
         #     issue.create_comment(stale_message)
         #     issue.add_to_labels("stale")
         print(not_updated_issues)
-        time.sleep(10)
+        time.sleep(60*60*24)
 
 
 if __name__ == "__main__":
     print("Started app.")
-    # schedule.every(1).minutes.do(mark_stale_issues)
     stale_issues_task = threading.Thread(target=mark_stale_issues)
     stale_issues_task.start()
 
@@ -114,8 +112,3 @@ if __name__ == "__main__":
         port = int(port)
 
     web.run_app(app, port=port)
-
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(10)
-

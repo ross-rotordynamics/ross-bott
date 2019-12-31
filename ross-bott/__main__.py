@@ -122,13 +122,13 @@ def scheduled_tasks():
     schedule.every().day.at("10:30").do(mark_stale_issues)
     while True:
         schedule.run_pending()
-        time.sleep(10)
+        time.sleep(5*60)
         print(f"App is up. Waiting to run {mark_stale_issues}")
 
 
 if __name__ == "__main__":
     print("Started app.")
     scheduled_tasks_thread = threading.Thread(target=scheduled_tasks)
-    wep_app = threading.Thread(target=run_web_app)
+    wep_app = threading.Thread(target=run_server, args=(aiohttp_server(),))
     scheduled_tasks_thread.start()
     wep_app.start()

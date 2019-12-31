@@ -23,6 +23,9 @@ sentry_sdk.init(
     integrations=[sentry_logging]
 )
 
+token = os.environ.get("GH_AUTH")
+g = gh(token)
+ross_repo = g.get_repo("ross-rotordynamics/ross")
 
 routes = web.RouteTableDef()
 router = routing.Router()
@@ -63,9 +66,15 @@ async def main(request):
     # return a "Success"
     return web.Response(status=200)
 
-token = os.environ.get("GH_AUTH")
-g = gh(token)
-ross_repo = g.get_repo("ross-rotordynamics/ross")
+
+def run_web_app():
+    app = web.Application()
+    app.add_routes(routes)
+    port = os.environ.get("PORT")
+    if port:
+        port = int(port)
+
+    web.run_app(app, port=port)
 
 
 def mark_stale_issues():
@@ -109,12 +118,6 @@ def scheduled_tasks():
 if __name__ == "__main__":
     print("Started app.")
     scheduled_tasks_thread = threading.Thread(target=scheduled_tasks)
+    wep_app = threading.Thread(target=run_web_app)
     scheduled_tasks_thread.start()
-
-    app = web.Application()
-    app.add_routes(routes)
-    port = os.environ.get("PORT")
-    if port:
-        port = int(port)
-
-    web.run_app(app, port=port)
+    wep_app.start()

@@ -33,11 +33,6 @@ async def issue_opened_event(event, gh, *args, **kwargs):
     Whenever an issue is opened, greet the author and say thanks.
     """
     pass
-    # url = event.data["issue"]["comments_url"]
-    # author = event.data["issue"]["user"]["login"]
-    #
-    # message = f"Thanks for the report @{author}! I will look into it ASAP! (I'm a bot)."
-    # await gh.post(url, data={"body": message})
 
 
 @routes.post("/")
@@ -72,7 +67,6 @@ def mark_stale_issues():
     while True:
         print(f'Running "mark_stale_issues" at {datetime.now()}')
         logging.debug(f'Running "mark_stale_issues" at {datetime.now()}')
-        div0 = 1 / 0
         LIMIT = 45
 
         issues = ross_repo.get_issues(state="open")
@@ -93,9 +87,9 @@ def mark_stale_issues():
         )
         # fmt: on
 
-        # for issue in not_updated_issues:
-        #     issue.create_comment(stale_message)
-        #     issue.add_to_labels("stale")
+        for issue in not_updated_issues:
+            issue.create_comment(stale_message)
+            issue.add_to_labels("stale")
         print(not_updated_issues)
         time.sleep(60*60*24)
 

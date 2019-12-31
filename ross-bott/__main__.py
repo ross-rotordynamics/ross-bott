@@ -5,6 +5,7 @@ import time
 import schedule
 import logging
 import aiohttp
+import asyncio
 import threading
 import sentry_sdk
 from github import Github as gh
@@ -67,14 +68,24 @@ async def main(request):
     return web.Response(status=200)
 
 
-def run_web_app():
+def aiohttp_server():
     app = web.Application()
     app.add_routes(routes)
+    runner = web.AppRunner(app)
+    return runner
+
+
+def run_server(runner):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(runner.setup())
+
     port = os.environ.get("PORT")
     if port:
         port = int(port)
-
-    web.run_app(app, port=port)
+    site = web.TCPSite(runner, port=port)
+    loop.run_until_complete(site.start())
+    loop.run_forever()
 
 
 def mark_stale_issues():

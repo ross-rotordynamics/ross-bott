@@ -2,12 +2,15 @@
 """
 import os
 import time
+import csv
 import schedule
 import logging
 import aiohttp
 import asyncio
 import threading
 import sentry_sdk
+import boto3
+from smart_open import open
 from github import Github as gh
 from datetime import datetime
 from aiohttp import web
@@ -63,6 +66,11 @@ async def main(request):
     return web.Response(status=200)
 
 
+@routes.get("/")
+async def web_page(request):
+    return web.Response(status=200, text="Hello")
+
+
 def aiohttp_server():
     app = web.Application()
     app.add_routes(routes)
@@ -113,6 +121,47 @@ def mark_stale_issues():
     print(not_updated_issues)
 
 
+def views_statistics():
+    """Get views statistics from GitHub."""
+    # first load saved statistics from s3 bucket
+    s3_bucket = os.environ.get
+    file_name = 'views.csv'
+
+    views_dict = {'timestamp': [], 'count': [], 'uniques': []}
+    with open(f's3://{s3_bucket}/{file_name}') as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            views_dict['timestamp'].append(
+                datetime.strptime(row['timestamp'], '%Y-%m-%d %H:%M:%S'))
+            views_dict['count'].append(int(row['count']))
+            views_dict['uniques'].append(int(row['uniques']))
+
+    # add today if not in there
+    if datetime.today().date() not in [d.date() for d in views_dict['timestamp']]:
+        views = ross_repo.get_views_traffic(per='day')['views']
+        for view in views:
+            if view.timestamp.date() == datetime.today().date():
+                views_dict['timestamp'].append(
+                    datetime.strptime(view.timestamp, '%Y-%m-%dT%H:%M:%SZ'))
+                views_dict['count'].append(view.count)
+                views_dict['uniques'].append(view.count)
+        with open(file_name, 'w') as views_file:
+            dict_list = [dict(zip(views_dict, t)) for t in
+                         zip(*views_dict.values())]
+            writer = csv.DictWriter(views_file,
+                                    ['timestamp', 'count', 'uniques'])
+            writer.writeheader()
+            for item in dict_list:
+                writer.writerow(item)
+        upload_to_S3(file_name)
+
+
+def upload_to_S3(file_name):
+    S3_BUCKET = os.environ.get("S3_BUCKET")
+    s3 = boto3.client("s3")
+    s3.upload_file(file_name, S3_BUCKET, file_name)
+
+
 def scheduled_tasks():
     schedule.every().day.at("10:30").do(mark_stale_issues)
     while True:
@@ -125,5 +174,6 @@ if __name__ == "__main__":
     print("Started app.")
     scheduled_tasks_thread = threading.Thread(target=scheduled_tasks)
     wep_app = threading.Thread(target=run_server, args=(aiohttp_server(),))
+
     scheduled_tasks_thread.start()
     wep_app.start()

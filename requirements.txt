@@ -3,3 +3,6 @@ aiohttp
 gidgethub
 sentry_sdk
 schedule
+boto3
+smart_open
+bokeh

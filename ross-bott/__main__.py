@@ -20,7 +20,8 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from bokeh.plotting import figure, ColumnDataSource, output_file, save
 from bokeh.models import Range1d, LinearAxis, HoverTool
 from bokeh.resources import CDN
-from bokeh.embed import file_html
+from bokeh.embed import file_html, components
+from jinja2 import Environment, FileSystemLoader
 
 sentry_logging = LoggingIntegration(
     level=logging.INFO,  # Capture info and above as breadcrumbs
@@ -68,8 +69,8 @@ async def main(request):
 
 @routes.get("/")
 async def web_page(request):
-    views_plot()
-    return web.FileResponse(status=200, path="views_plot.html")
+    generate_html()
+    return web.FileResponse(status=200, path="main.html")
 
 
 def aiohttp_server():
@@ -186,10 +187,24 @@ def views_plot():
         "timestamp", "uniques", source=source, y_range_name="uniques", color="green"
     )
     hover.renderers.append(line_count)
-    output_file("views_plot.html")
-    save(p)
+    # output_file("views_plot.html")
+    # save(p)
 
-    return file_html(p, CDN, "Views plot")
+    script, div = components(p)
+
+    return script, div
+
+
+def generate_html():
+    env = Environment(loader=FileSystemLoader('ross-bott/templates'))
+    template = env.get_template('test.html')
+    views_plot_script, views_plot_div = views_plot()
+    print(views_plot_script, views_plot_div)
+    output = template.render(views_plot_div=views_plot_div,
+                             views_plot_script=views_plot_script)
+
+    with open('main.html', 'w') as f:
+        f.write(output)
 
 
 def upload_to_S3(file_name):
@@ -213,3 +228,4 @@ if __name__ == "__main__":
 
     scheduled_tasks_thread.start()
     wep_app.start()
+

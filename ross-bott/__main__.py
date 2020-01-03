@@ -17,15 +17,16 @@ from aiohttp import web
 from gidgethub import routing, sansio
 from gidgethub import aiohttp as gh_aiohttp
 from sentry_sdk.integrations.logging import LoggingIntegration
+from bokeh.plotting import figure, ColumnDataSource, output_file, save
+from bokeh.models import Range1d, LinearAxis, HoverTool
+from bokeh.resources import CDN
+from bokeh.embed import file_html
 
 sentry_logging = LoggingIntegration(
-    level=logging.INFO,        # Capture info and above as breadcrumbs
-    event_level=logging.INFO   # Send errors as events
+    level=logging.INFO,  # Capture info and above as breadcrumbs
+    event_level=logging.INFO,  # Send errors as events
 )
-sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DSN"),
-    integrations=[sentry_logging]
-)
+sentry_sdk.init(dsn=os.environ.get("SENTRY_DSN"), integrations=[sentry_logging])
 
 token = os.environ.get("GH_AUTH")
 g = gh(token)
@@ -56,8 +57,7 @@ async def main(request):
     # a representation of GitHub webhook event
     event = sansio.Event.from_http(request.headers, body, secret=secret)
     async with aiohttp.ClientSession() as session:
-        gh = gh_aiohttp.GitHubAPI(session, "ross-bott",
-                                  oauth_token=oauth_token)
+        gh = gh_aiohttp.GitHubAPI(session, "ross-bott", oauth_token=oauth_token)
 
         # call the appropriate callback for the event
         await router.dispatch(event, gh)
@@ -68,7 +68,8 @@ async def main(request):
 
 @routes.get("/")
 async def web_page(request):
-    return web.Response(status=200, text="Hello")
+    views_plot()
+    return web.FileResponse(status=200, path="views_plot.html")
 
 
 def aiohttp_server():
@@ -124,36 +125,71 @@ def mark_stale_issues():
 def views_statistics():
     """Get views statistics from GitHub."""
     # first load saved statistics from s3 bucket
-    s3_bucket = os.environ.get
-    file_name = 'views.csv'
+    s3_bucket = os.environ.get("S3_BUCKET", default="ross-bott")
+    file_name = "views.csv"
 
-    views_dict = {'timestamp': [], 'count': [], 'uniques': []}
-    with open(f's3://{s3_bucket}/{file_name}') as csv_file:
+    views_dict = {"timestamp": [], "count": [], "uniques": []}
+    with open(f"s3://{s3_bucket}/{file_name}") as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            views_dict['timestamp'].append(
-                datetime.strptime(row['timestamp'], '%Y-%m-%d %H:%M:%S'))
-            views_dict['count'].append(int(row['count']))
-            views_dict['uniques'].append(int(row['uniques']))
+            views_dict["timestamp"].append(
+                datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S")
+            )
+            views_dict["count"].append(int(row["count"]))
+            views_dict["uniques"].append(int(row["uniques"]))
 
-    # add today if not in there
-    if datetime.today().date() not in [d.date() for d in views_dict['timestamp']]:
-        views = ross_repo.get_views_traffic(per='day')['views']
+        # add today if not in there
+    if datetime.today().date() not in [d.date() for d in views_dict["timestamp"]]:
+        views = ross_repo.get_views_traffic(per="day")["views"]
         for view in views:
             if view.timestamp.date() == datetime.today().date():
-                views_dict['timestamp'].append(
-                    datetime.strptime(view.timestamp, '%Y-%m-%dT%H:%M:%SZ'))
-                views_dict['count'].append(view.count)
-                views_dict['uniques'].append(view.count)
-        with open(file_name, 'w') as views_file:
-            dict_list = [dict(zip(views_dict, t)) for t in
-                         zip(*views_dict.values())]
-            writer = csv.DictWriter(views_file,
-                                    ['timestamp', 'count', 'uniques'])
+                views_dict["timestamp"].append(view.timestamp)
+                views_dict["count"].append(view.count)
+                views_dict["uniques"].append(view.uniques)
+        with open(file_name, "w") as views_file:
+            dict_list = [dict(zip(views_dict, t)) for t in zip(*views_dict.values())]
+            writer = csv.DictWriter(views_file, ["timestamp", "count", "uniques"])
             writer.writeheader()
             for item in dict_list:
                 writer.writerow(item)
         upload_to_S3(file_name)
+
+    return views_dict
+
+
+def views_plot():
+    views_dict = views_statistics()
+    source = ColumnDataSource(views_dict)
+    hover = HoverTool(
+        renderers=[],
+        tooltips=[
+            ("Count", "@count"),
+            ("Unique", "@uniques"),
+            ("Time", "@timestamp{%Y-%m-%d}"),
+        ],
+        formatters={"timestamp": "datetime"},
+        mode="vline",
+    )
+    p = figure(
+        title="Views",
+        x_axis_type="datetime",
+        y_axis_label="Count",
+        y_range=(0, max(views_dict["count"]) + 1),
+        tools=[hover, "pan", "wheel_zoom", "reset"],
+    )
+    p.extra_y_ranges["uniques"] = Range1d(0, max(views_dict["uniques"]) + 1)
+    p.add_layout(LinearAxis(y_range_name="uniques", axis_label="Uniques"), "right")
+    line_count = p.line("timestamp", "count", source=source)
+    p.line("timestamp", "uniques", source=source, y_range_name="uniques", color="green")
+    p.circle("timestamp", "count", source=source)
+    p.circle(
+        "timestamp", "uniques", source=source, y_range_name="uniques", color="green"
+    )
+    hover.renderers.append(line_count)
+    output_file("views_plot.html")
+    save(p)
+
+    return file_html(p, CDN, "Views plot")
 
 
 def upload_to_S3(file_name):
@@ -166,7 +202,7 @@ def scheduled_tasks():
     schedule.every().day.at("10:30").do(mark_stale_issues)
     while True:
         schedule.run_pending()
-        time.sleep(5*60)
+        time.sleep(5 * 60)
         print(f"App is up. Waiting to run {mark_stale_issues}")
 
 

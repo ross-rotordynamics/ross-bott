@@ -10,9 +10,11 @@ import asyncio
 import threading
 import sentry_sdk
 import boto3
+import inspect
+from pathlib import Path
 from smart_open import open
 from github import Github as gh
-from datetime import datetime
+from datetime import datetime, timedelta
 from aiohttp import web
 from gidgethub import routing, sansio
 from gidgethub import aiohttp as gh_aiohttp
@@ -69,12 +71,17 @@ async def main(request):
 
 @routes.get("/")
 async def web_page(request):
+    print(inspect.stack()[0][3])
+    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     generate_html()
-    return web.FileResponse(status=200, path="main.html")
+    return web.FileResponse(status=200, path="ross-bott/static/main.html")
 
 
 def aiohttp_server():
+    print(inspect.stack()[0][3])
+    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     app = web.Application()
+    app.router.add_static('/static/', (Path.cwd() / 'ross-bott/static'))
     app.add_routes(routes)
     runner = web.AppRunner(app)
     return runner
@@ -125,6 +132,8 @@ def mark_stale_issues():
 
 def views_statistics():
     """Get views statistics from GitHub."""
+    print(inspect.stack()[0][3])
+    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     # first load saved statistics from s3 bucket
     s3_bucket = os.environ.get("S3_BUCKET", default="ross-bott")
     file_name = "views.csv"
@@ -140,20 +149,22 @@ def views_statistics():
             views_dict["uniques"].append(int(row["uniques"]))
 
         # add today if not in there
-    if datetime.today().date() not in [d.date() for d in views_dict["timestamp"]]:
-        views = ross_repo.get_views_traffic(per="day")["views"]
-        for view in views:
-            if view.timestamp.date() == datetime.today().date():
-                views_dict["timestamp"].append(view.timestamp)
-                views_dict["count"].append(view.count)
-                views_dict["uniques"].append(view.uniques)
-        with open(file_name, "w") as views_file:
-            dict_list = [dict(zip(views_dict, t)) for t in zip(*views_dict.values())]
-            writer = csv.DictWriter(views_file, ["timestamp", "count", "uniques"])
-            writer.writeheader()
-            for item in dict_list:
-                writer.writerow(item)
-        upload_to_S3(file_name)
+    # check days without update
+    days_without_update = (datetime.today() - views_dict['timestamp'][-1]).days
+    dates_not_included = [datetime.today().date() - timedelta(days=x) for x in range(days_without_update)]
+    views = ross_repo.get_views_traffic(per="day")["views"]
+    for view in views:
+        if view.timestamp.date() in dates_not_included:
+            views_dict["timestamp"].append(view.timestamp)
+            views_dict["count"].append(view.count)
+            views_dict["uniques"].append(view.uniques)
+    with open(file_name, "w") as views_file:
+        dict_list = [dict(zip(views_dict, t)) for t in zip(*views_dict.values())]
+        writer = csv.DictWriter(views_file, ["timestamp", "count", "uniques"])
+        writer.writeheader()
+        for item in dict_list:
+            writer.writerow(item)
+    upload_to_S3(file_name)
 
     return views_dict
 
@@ -177,6 +188,8 @@ def views_plot():
         y_axis_label="Count",
         y_range=(0, max(views_dict["count"]) + 1),
         tools=[hover, "pan", "wheel_zoom", "reset"],
+        width=719,
+        height=243,
     )
     p.extra_y_ranges["uniques"] = Range1d(0, max(views_dict["uniques"]) + 1)
     p.add_layout(LinearAxis(y_range_name="uniques", axis_label="Uniques"), "right")
@@ -196,14 +209,15 @@ def views_plot():
 
 
 def generate_html():
+    print(inspect.stack()[0][3])
+    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     env = Environment(loader=FileSystemLoader('ross-bott/templates'))
-    template = env.get_template('test.html')
+    template = env.get_template('template.html')
     views_plot_script, views_plot_div = views_plot()
-    print(views_plot_script, views_plot_div)
     output = template.render(views_plot_div=views_plot_div,
                              views_plot_script=views_plot_script)
 
-    with open('main.html', 'w') as f:
+    with open('ross-bott/static/main.html', 'w') as f:
         f.write(output)
 
 

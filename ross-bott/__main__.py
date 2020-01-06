@@ -1,29 +1,27 @@
 """Script to look for stale issues and require some action from the team.
 """
-import os
-import time
-import csv
-import schedule
-import logging
-import aiohttp
 import asyncio
+import csv
+import logging
+import os
 import threading
-import sentry_sdk
-import boto3
-import inspect
-from pathlib import Path
-from smart_open import open
-from github import Github as gh
+import time
 from datetime import datetime, timedelta
+from pathlib import Path
+
+import aiohttp
+import boto3
+import schedule
+import sentry_sdk
 from aiohttp import web
-from gidgethub import routing, sansio
-from gidgethub import aiohttp as gh_aiohttp
-from sentry_sdk.integrations.logging import LoggingIntegration
-from bokeh.plotting import figure, ColumnDataSource, output_file, save
-from bokeh.models import Range1d, LinearAxis, HoverTool
-from bokeh.resources import CDN
-from bokeh.embed import file_html, components
+from bokeh.embed import components
+from bokeh.models import HoverTool, LinearAxis, Range1d
+from bokeh.plotting import ColumnDataSource, figure
+from gidgethub import aiohttp as gh_aiohttp, routing, sansio
+from github import Github as gh
 from jinja2 import Environment, FileSystemLoader
+from sentry_sdk.integrations.logging import LoggingIntegration
+from smart_open import open
 
 sentry_logging = LoggingIntegration(
     level=logging.INFO,  # Capture info and above as breadcrumbs
@@ -71,15 +69,11 @@ async def main(request):
 
 @routes.get("/")
 async def web_page(request):
-    print(inspect.stack()[0][3])
-    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     generate_html()
     return web.FileResponse(status=200, path="ross-bott/static/main.html")
 
 
 def aiohttp_server():
-    print(inspect.stack()[0][3])
-    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     app = web.Application()
     app.router.add_static('/static/', (Path.cwd() / 'ross-bott/static'))
     app.add_routes(routes)
@@ -132,8 +126,6 @@ def mark_stale_issues():
 
 def views_statistics():
     """Get views statistics from GitHub."""
-    print(inspect.stack()[0][3])
-    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     # first load saved statistics from s3 bucket
     s3_bucket = os.environ.get("S3_BUCKET", default="ross-bott")
     file_name = "views.csv"
@@ -200,8 +192,6 @@ def views_plot():
         "timestamp", "uniques", source=source, y_range_name="uniques", color="green"
     )
     hover.renderers.append(line_count)
-    # output_file("views_plot.html")
-    # save(p)
 
     script, div = components(p)
 
@@ -209,8 +199,6 @@ def views_plot():
 
 
 def generate_html():
-    print(inspect.stack()[0][3])
-    print(inspect.stack()[1][3])  # will give the caller of foos name, if something called foo
     env = Environment(loader=FileSystemLoader('ross-bott/templates'))
     template = env.get_template('template.html')
     views_plot_script, views_plot_div = views_plot()

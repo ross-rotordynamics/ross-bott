@@ -118,3 +118,5 @@ notebooks/
 /paper/Makefile
 /ross-bott/static/main.html
 /views.csv
+/stars.csv
+/clones.csv

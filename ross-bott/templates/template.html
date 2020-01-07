@@ -11,6 +11,8 @@
         <script src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-1.4.0.min.js"></script>
         <script src="https://cdn.bokeh.org/bokeh/release/bokeh-tables-1.4.0.min.js"></script>
         {{ views_plot_script }}
+        {{ clones_plot_script }}
+        {{ stars_plot_script }}
 
     </head>
     <body>
@@ -18,7 +20,10 @@
     <br>
     The purpose of this report is to provide data about ROSS` repository activity.
     <br>
-
         {{ views_plot_div }}
+    <br>
+        {{ clones_plot_div }}
+    <br>
+        {{ stars_plot_div }}
     </body>
 </html>

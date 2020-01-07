@@ -124,46 +124,48 @@ def mark_stale_issues():
     print(not_updated_issues)
 
 
-def views_statistics():
-    """Get views statistics from GitHub."""
+def statistics(stats_type):
+    """Get views or clones statistics from GitHub."""
     # first load saved statistics from s3 bucket
     s3_bucket = os.environ.get("S3_BUCKET", default="ross-bott")
-    file_name = "views.csv"
+    file_name = f"{stats_type}.csv"
 
-    views_dict = {"timestamp": [], "count": [], "uniques": []}
+    stats_dict = {"timestamp": [], "count": [], "uniques": []}
     with open(f"s3://{s3_bucket}/{file_name}") as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            views_dict["timestamp"].append(
-                datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S")
-            )
-            views_dict["count"].append(int(row["count"]))
-            views_dict["uniques"].append(int(row["uniques"]))
+            stats_dict["timestamp"].append(row['timestamp'])
+            stats_dict["count"].append(int(row["count"]))
+            stats_dict["uniques"].append(int(row["uniques"]))
 
         # add today if not in there
     # check days without update
-    days_without_update = (datetime.today() - views_dict['timestamp'][-1]).days
+    last_update = datetime.strptime(stats_dict['timestamp'][-1], "%Y-%m-%dT%H:%M:%SZ")
+    days_without_update = (datetime.today() - last_update).days
     dates_not_included = [datetime.today().date() - timedelta(days=x) for x in range(days_without_update)]
-    views = ross_repo.get_views_traffic(per="day")["views"]
-    for view in views:
-        if view.timestamp.date() in dates_not_included:
-            views_dict["timestamp"].append(view.timestamp)
-            views_dict["count"].append(view.count)
-            views_dict["uniques"].append(view.uniques)
+    stats = getattr(ross_repo, f'get_{stats_type}_traffic')(per='day')[stats_type]
+    for s in stats:
+        if s.timestamp.date() in dates_not_included:
+            stats_dict["timestamp"].append(s.raw_data['timestamp'].timestamp)
+            stats_dict["count"].append(s.count)
+            stats_dict["uniques"].append(s.uniques)
     with open(file_name, "w") as views_file:
-        dict_list = [dict(zip(views_dict, t)) for t in zip(*views_dict.values())]
+        dict_list = [dict(zip(stats_dict, t)) for t in zip(*stats_dict.values())]
         writer = csv.DictWriter(views_file, ["timestamp", "count", "uniques"])
         writer.writeheader()
         for item in dict_list:
             writer.writerow(item)
     upload_to_S3(file_name)
 
-    return views_dict
+    for i, item in enumerate(stats_dict['timestamp']):
+        stats_dict['timestamp'][i] = datetime.strptime(item, "%Y-%m-%dT%H:%M:%SZ")
+
+    return stats_dict
 
 
-def views_plot():
-    views_dict = views_statistics()
-    source = ColumnDataSource(views_dict)
+def stats_plot(stats_type):
+    stats_dict = statistics(stats_type)
+    source = ColumnDataSource(stats_dict)
     hover = HoverTool(
         renderers=[],
         tooltips=[
@@ -175,15 +177,15 @@ def views_plot():
         mode="vline",
     )
     p = figure(
-        title="Views",
+        title=f"{stats_type.capitalize()}",
         x_axis_type="datetime",
         y_axis_label="Count",
-        y_range=(0, max(views_dict["count"]) + 1),
+        y_range=(0, max(stats_dict["count"]) + 1),
         tools=[hover, "pan", "wheel_zoom", "reset"],
         width=719,
         height=243,
     )
-    p.extra_y_ranges["uniques"] = Range1d(0, max(views_dict["uniques"]) + 1)
+    p.extra_y_ranges["uniques"] = Range1d(0, max(stats_dict["uniques"]) + 1)
     p.add_layout(LinearAxis(y_range_name="uniques", axis_label="Uniques"), "right")
     line_count = p.line("timestamp", "count", source=source)
     p.line("timestamp", "uniques", source=source, y_range_name="uniques", color="green")
@@ -198,12 +200,83 @@ def views_plot():
     return script, div
 
 
+def stars_statistics():
+    pass
+    """Get stars statistics from GitHub."""
+    # first load saved statistics from s3 bucket
+    s3_bucket = os.environ.get("S3_BUCKET", default="ross-bott")
+    file_name = "stars.csv"
+
+    stars_dict = {"user": [], "starred_at": []}
+    with open(f"s3://{s3_bucket}/{file_name}") as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            stars_dict["starred_at"].append(row["starred_at"])
+            stars_dict["user"].append(row["user"])
+
+    # check new stargazers
+    stargazers = ross_repo.get_stargazers_with_dates()
+    stars_not_included = [s for s in stargazers if s.user.login not in stars_dict["user"]]
+    for star in stars_not_included:
+        stars_dict['user'].append(star.user.login)
+        stars_dict['starred_at'].append(star.raw_data['starred_at'])
+    with open(file_name, "w") as stars_file:
+        dict_list = [dict(zip(stars_dict, t)) for t in zip(*stars_dict.values())]
+        writer = csv.DictWriter(stars_file, ["user", "starred_at"])
+        writer.writeheader()
+        for item in dict_list:
+            writer.writerow(item)
+    upload_to_S3(file_name)
+
+    return stars_dict
+
+
+def stars_plot():
+    stars_dict = stars_statistics()
+    stars_count_dict = {'timestamp': [], 'count': []}
+    for i, data in enumerate(stars_dict['starred_at']):
+        stars_count_dict['timestamp'].append(datetime.strptime(data, "%Y-%m-%dT%H:%M:%SZ"))
+        stars_count_dict['count'].append(i)
+
+    source = ColumnDataSource(stars_count_dict)
+    hover = HoverTool(
+        renderers=[],
+        tooltips=[
+            ("Count", "@count"),
+            ("Time", "@timestamp{%Y-%m-%d}"),
+        ],
+        formatters={"timestamp": "datetime"},
+        mode="vline",
+    )
+    p = figure(
+        title="Stars",
+        x_axis_type="datetime",
+        y_axis_label="Count",
+        y_range=(0, max(stars_count_dict["count"]) + 1),
+        tools=[hover, "pan", "wheel_zoom", "reset"],
+        width=719,
+        height=243,
+    )
+    line_count = p.line("timestamp", "count", source=source)
+    p.circle("timestamp", "count", source=source)
+    hover.renderers.append(line_count)
+    script, div = components(p)
+
+    return script, div
+
+
 def generate_html():
     env = Environment(loader=FileSystemLoader('ross-bott/templates'))
     template = env.get_template('template.html')
-    views_plot_script, views_plot_div = views_plot()
+    views_plot_script, views_plot_div = stats_plot('views')
+    clones_plot_script, clones_plot_div = stats_plot('clones')
+    stars_plot_script, stars_plot_div = stars_plot()
     output = template.render(views_plot_div=views_plot_div,
-                             views_plot_script=views_plot_script)
+                             views_plot_script=views_plot_script,
+                             clones_plot_div=clones_plot_div,
+                             clones_plot_script=clones_plot_script,
+                             stars_plot_div=stars_plot_div,
+                             stars_plot_script=stars_plot_script)
 
     with open('ross-bott/static/main.html', 'w') as f:
         f.write(output)

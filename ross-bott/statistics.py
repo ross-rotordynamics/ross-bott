@@ -35,7 +35,7 @@ def statistics(stats_type, repo):
     stats = getattr(repo, f"get_{stats_type}_traffic")(per="day")[stats_type]
     for s in stats:
         if s.timestamp.date() in dates_not_included:
-            stats_dict["timestamp"].append(s.raw_data["timestamp"].timestamp)
+            stats_dict["timestamp"].append(s.raw_data["timestamp"])
             stats_dict["count"].append(s.count)
             stats_dict["uniques"].append(s.uniques)
     with open(file_name, "w") as views_file:

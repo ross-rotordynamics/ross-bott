@@ -65,13 +65,10 @@ async def main(request):
 
 @routes.get("/")
 async def web_page(request):
-    try:
-        webfile = web.FileResponse(status=200, path="ross-bott/static/main.html")
-    except FileNotFoundError:
+    if not Path('ross-bott/static/main.html').is_file():
         generate_html()
-        webfile = web.FileResponse(status=200, path="ross-bott/static/main.html")
 
-    return webfile
+    return web.FileResponse(status=200, path="ross-bott/static/main.html")
 
 
 def aiohttp_server():

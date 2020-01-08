@@ -12,13 +12,12 @@ import aiohttp
 import schedule
 import sentry_sdk
 from aiohttp import web
-
 from gidgethub import aiohttp as gh_aiohttp, routing, sansio
 from github import Github as gh
 from jinja2 import Environment, FileSystemLoader
 from sentry_sdk.integrations.logging import LoggingIntegration
 
-from .statistics import stats_plot, stars_plot
+from .statistics import stars_plot, stats_plot
 
 sentry_logging = LoggingIntegration(
     level=logging.INFO,  # Capture info and above as breadcrumbs
@@ -71,7 +70,7 @@ async def web_page(request):
 
 def aiohttp_server():
     app = web.Application()
-    app.router.add_static('/static/', (Path.cwd() / 'ross-bott/static'))
+    app.router.add_static("/static/", (Path.cwd() / "ross-bott/static"))
     app.add_routes(routes)
     runner = web.AppRunner(app)
     return runner
@@ -121,19 +120,21 @@ def mark_stale_issues():
 
 
 def generate_html():
-    env = Environment(loader=FileSystemLoader('ross-bott/templates'))
-    template = env.get_template('template.html')
-    views_plot_script, views_plot_div = stats_plot('views', ross_repo)
-    clones_plot_script, clones_plot_div = stats_plot('clones', ross_repo)
+    env = Environment(loader=FileSystemLoader("ross-bott/templates"))
+    template = env.get_template("template.html")
+    views_plot_script, views_plot_div = stats_plot("views", ross_repo)
+    clones_plot_script, clones_plot_div = stats_plot("clones", ross_repo)
     stars_plot_script, stars_plot_div = stars_plot(ross_repo)
-    output = template.render(views_plot_div=views_plot_div,
-                             views_plot_script=views_plot_script,
-                             clones_plot_div=clones_plot_div,
-                             clones_plot_script=clones_plot_script,
-                             stars_plot_div=stars_plot_div,
-                             stars_plot_script=stars_plot_script)
+    output = template.render(
+        views_plot_div=views_plot_div,
+        views_plot_script=views_plot_script,
+        clones_plot_div=clones_plot_div,
+        clones_plot_script=clones_plot_script,
+        stars_plot_div=stars_plot_div,
+        stars_plot_script=stars_plot_script,
+    )
 
-    with open('ross-bott/static/main.html', 'w') as f:
+    with open("ross-bott/static/main.html", "w") as f:
         f.write(output)
 
 

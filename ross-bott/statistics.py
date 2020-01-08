@@ -1,11 +1,13 @@
 """ROSS' repository statistics."""
-import os
 import csv
+import os
 from datetime import datetime, timedelta
+
 from bokeh.embed import components
 from bokeh.models import HoverTool, LinearAxis, Range1d
 from bokeh.plotting import ColumnDataSource, figure
 from smart_open import open
+
 from .utils import upload_to_s3
 
 
@@ -19,19 +21,21 @@ def statistics(stats_type, repo):
     with open(f"s3://{s3_bucket}/{file_name}") as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            stats_dict["timestamp"].append(row['timestamp'])
+            stats_dict["timestamp"].append(row["timestamp"])
             stats_dict["count"].append(int(row["count"]))
             stats_dict["uniques"].append(int(row["uniques"]))
 
         # add today if not in there
     # check days without update
-    last_update = datetime.strptime(stats_dict['timestamp'][-1], "%Y-%m-%dT%H:%M:%SZ")
+    last_update = datetime.strptime(stats_dict["timestamp"][-1], "%Y-%m-%dT%H:%M:%SZ")
     days_without_update = (datetime.today() - last_update).days
-    dates_not_included = [datetime.today().date() - timedelta(days=x) for x in range(days_without_update)]
-    stats = getattr(repo, f'get_{stats_type}_traffic')(per='day')[stats_type]
+    dates_not_included = [
+        datetime.today().date() - timedelta(days=x) for x in range(days_without_update)
+    ]
+    stats = getattr(repo, f"get_{stats_type}_traffic")(per="day")[stats_type]
     for s in stats:
         if s.timestamp.date() in dates_not_included:
-            stats_dict["timestamp"].append(s.raw_data['timestamp'].timestamp)
+            stats_dict["timestamp"].append(s.raw_data["timestamp"].timestamp)
             stats_dict["count"].append(s.count)
             stats_dict["uniques"].append(s.uniques)
     with open(file_name, "w") as views_file:
@@ -42,8 +46,8 @@ def statistics(stats_type, repo):
             writer.writerow(item)
     upload_to_s3(file_name)
 
-    for i, item in enumerate(stats_dict['timestamp']):
-        stats_dict['timestamp'][i] = datetime.strptime(item, "%Y-%m-%dT%H:%M:%SZ")
+    for i, item in enumerate(stats_dict["timestamp"]):
+        stats_dict["timestamp"][i] = datetime.strptime(item, "%Y-%m-%dT%H:%M:%SZ")
 
     return stats_dict
 
@@ -100,10 +104,12 @@ def stars_statistics(repo):
 
     # check new stargazers
     stargazers = repo.get_stargazers_with_dates()
-    stars_not_included = [s for s in stargazers if s.user.login not in stars_dict["user"]]
+    stars_not_included = [
+        s for s in stargazers if s.user.login not in stars_dict["user"]
+    ]
     for star in stars_not_included:
-        stars_dict['user'].append(star.user.login)
-        stars_dict['starred_at'].append(star.raw_data['starred_at'])
+        stars_dict["user"].append(star.user.login)
+        stars_dict["starred_at"].append(star.raw_data["starred_at"])
     with open(file_name, "w") as stars_file:
         dict_list = [dict(zip(stars_dict, t)) for t in zip(*stars_dict.values())]
         writer = csv.DictWriter(stars_file, ["user", "starred_at"])
@@ -117,18 +123,17 @@ def stars_statistics(repo):
 
 def stars_plot(repo):
     stars_dict = stars_statistics(repo)
-    stars_count_dict = {'timestamp': [], 'count': []}
-    for i, data in enumerate(stars_dict['starred_at']):
-        stars_count_dict['timestamp'].append(datetime.strptime(data, "%Y-%m-%dT%H:%M:%SZ"))
-        stars_count_dict['count'].append(i)
+    stars_count_dict = {"timestamp": [], "count": []}
+    for i, data in enumerate(stars_dict["starred_at"]):
+        stars_count_dict["timestamp"].append(
+            datetime.strptime(data, "%Y-%m-%dT%H:%M:%SZ")
+        )
+        stars_count_dict["count"].append(i)
 
     source = ColumnDataSource(stars_count_dict)
     hover = HoverTool(
         renderers=[],
-        tooltips=[
-            ("Count", "@count"),
-            ("Time", "@timestamp{%Y-%m-%d}"),
-        ],
+        tooltips=[("Count", "@count"), ("Time", "@timestamp{%Y-%m-%d}")],
         formatters={"timestamp": "datetime"},
         mode="vline",
     )

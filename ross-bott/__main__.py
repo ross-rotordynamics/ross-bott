@@ -69,7 +69,6 @@ async def main(request):
 
 @routes.get("/")
 async def web_page(request):
-    generate_html()
     return web.FileResponse(status=200, path="ross-bott/static/main.html")
 
 
@@ -290,6 +289,7 @@ def upload_to_S3(file_name):
 
 def scheduled_tasks():
     schedule.every().day.at("10:30").do(mark_stale_issues)
+    schedule.every().day.at("11:00").do(generate_html)
     while True:
         schedule.run_pending()
         time.sleep(5 * 60)

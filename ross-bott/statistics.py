@@ -38,6 +38,7 @@ def statistics(stats_type, repo):
             stats_dict["timestamp"].append(s.raw_data["timestamp"])
             stats_dict["count"].append(s.count)
             stats_dict["uniques"].append(s.uniques)
+
     with open(file_name, "w") as views_file:
         dict_list = [dict(zip(stats_dict, t)) for t in zip(*stats_dict.values())]
         writer = csv.DictWriter(views_file, ["timestamp", "count", "uniques"])
@@ -47,7 +48,21 @@ def statistics(stats_type, repo):
     upload_to_s3(file_name)
 
     for i, item in enumerate(stats_dict["timestamp"]):
-        stats_dict["timestamp"][i] = datetime.strptime(item, "%Y-%m-%dT%H:%M:%SZ")
+        stats_dict["timestamp"][i] = datetime.strptime(item, "%Y-%m-%dT%H:%M:%SZ").date()
+
+    # fill with 0's dates not in the data
+    delta = (datetime.today().date() - stats_dict["timestamp"][0]).days
+    for i in reversed(range(delta)):
+        d = datetime.today().date() - timedelta(days=i)
+        if d not in stats_dict["timestamp"]:
+            stats_dict["timestamp"].append(d)
+            stats_dict["count"].append(0)
+            stats_dict["uniques"].append(0)
+    # sort after adding 0's
+    timestamp, count, uniques = (list(i) for i in zip(*sorted(zip(*stats_dict.values()))))
+    stats_dict["timestamp"] = timestamp
+    stats_dict["count"] = count
+    stats_dict["uniques"] = uniques
 
     return stats_dict
 

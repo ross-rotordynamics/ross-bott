@@ -143,7 +143,7 @@ def stars_plot(repo):
         stars_count_dict["timestamp"].append(
             datetime.strptime(data, "%Y-%m-%dT%H:%M:%SZ")
         )
-        stars_count_dict["count"].append(i)
+        stars_count_dict["count"].append(i + 1)
 
     source = ColumnDataSource(stars_count_dict)
     hover = HoverTool(

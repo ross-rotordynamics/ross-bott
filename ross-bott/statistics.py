@@ -106,25 +106,16 @@ def stats_plot(stats_type, repo):
 
 def stars_statistics(repo):
     """Get stars statistics from GitHub."""
-    # first load saved statistics from s3 bucket
-    s3_bucket = os.environ.get("S3_BUCKET", default="ross-bott")
     file_name = "stars.csv"
-
     stars_dict = {"user": [], "starred_at": []}
-    with open(f"s3://{s3_bucket}/{file_name}") as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            stars_dict["starred_at"].append(row["starred_at"])
-            stars_dict["user"].append(row["user"])
 
-    # check new stargazers
+    # check stargazers
     stargazers = repo.get_stargazers_with_dates()
-    stars_not_included = [
-        s for s in stargazers if s.user.login not in stars_dict["user"]
-    ]
-    for star in stars_not_included:
+
+    for star in stargazers:
         stars_dict["user"].append(star.user.login)
         stars_dict["starred_at"].append(star.raw_data["starred_at"])
+
     with open(file_name, "w") as stars_file:
         dict_list = [dict(zip(stars_dict, t)) for t in zip(*stars_dict.values())]
         writer = csv.DictWriter(stars_file, ["user", "starred_at"])

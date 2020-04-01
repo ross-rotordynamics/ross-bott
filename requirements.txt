@@ -5,4 +5,4 @@ sentry_sdk
 schedule
 boto3
 smart_open
-bokeh
+bokeh=2.0.1

@@ -1,8 +1,8 @@
-PyGithub
-aiohttp
-gidgethub
-sentry_sdk
-schedule
-boto3
-smart_open
-bokeh==2.0.1
+PyGithub==1.47
+aiohttp==3.6.2
+gidgethub==4.0.0
+sentry_sdk==0.14.3
+schedule==0.6.0
+boto3==1.12.33
+smart_open==1.10.0
+bokeh==1.4.0

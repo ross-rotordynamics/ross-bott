@@ -28,7 +28,9 @@ def statistics(stats_type, repo):
         # add today if not in there
     # check days without update
     last_update = datetime.strptime(stats_dict["timestamp"][-1], "%Y-%m-%dT%H:%M:%SZ")
-    days_without_update = (datetime.today() - last_update).days
+    # count from yesterday so that we don't update with incomplete data from today
+    yesterday = datetime.today() - timedelta(1)
+    days_without_update = (yesterday - last_update).days
     dates_not_included = [
         datetime.today().date() - timedelta(days=x) for x in range(days_without_update)
     ]

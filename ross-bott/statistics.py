@@ -41,6 +41,14 @@ def statistics(stats_type, repo):
             stats_dict["count"].append(s.count)
             stats_dict["uniques"].append(s.uniques)
 
+    with open(file_name, "w") as stats_file:
+        dict_list = [dict(zip(stats_dict, t)) for t in zip(*stats_dict.values())]
+        writer = csv.DictWriter(stats_file, ["timestamp", "count", "uniques"])
+        writer.writeheader()
+        for item in dict_list:
+            writer.writerow(item)
+    upload_to_s3(file_name)
+
     for i, item in enumerate(stats_dict["timestamp"]):
         stats_dict["timestamp"][i] = datetime.strptime(item, "%Y-%m-%dT%H:%M:%SZ").date()
 
@@ -57,14 +65,6 @@ def statistics(stats_type, repo):
     stats_dict["timestamp"] = timestamp
     stats_dict["count"] = count
     stats_dict["uniques"] = uniques
-    
-    with open(file_name, "w") as stats_file:
-        dict_list = [dict(zip(stats_dict, t)) for t in zip(*stats_dict.values())]
-        writer = csv.DictWriter(stats_file, ["timestamp", "count", "uniques"])
-        writer.writeheader()
-        for item in dict_list:
-            writer.writerow(item)
-    upload_to_s3(file_name)
 
     return stats_dict
 

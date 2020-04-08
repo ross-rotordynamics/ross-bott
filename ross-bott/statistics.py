@@ -55,7 +55,7 @@ def statistics(stats_type, repo):
     # fill with 0's dates not in the data
     delta = (yesterday.date() - stats_dict["timestamp"][0]).days
     for i in reversed(range(delta)):
-        d = datetime.today().date() - timedelta(days=i)
+        d = yesterday.date() - timedelta(days=i)
         if d not in stats_dict["timestamp"]:
             stats_dict["timestamp"].append(d)
             stats_dict["count"].append(0)

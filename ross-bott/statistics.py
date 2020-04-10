@@ -32,7 +32,7 @@ def statistics(stats_type, repo):
     yesterday = datetime.today() - timedelta(1)
     days_without_update = (yesterday - last_update).days
     dates_not_included = [
-        datetime.today().date() - timedelta(days=x) for x in range(days_without_update)
+        yesterday.date() - timedelta(days=x) for x in range(days_without_update)
     ]
     stats = getattr(repo, f"get_{stats_type}_traffic")(per="day")[stats_type]
     for s in stats:

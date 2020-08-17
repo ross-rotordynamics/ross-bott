@@ -103,7 +103,9 @@ def mark_stale_issues():
     for issue in issues:
         last_update = (datetime.today() - issue.updated_at).days
         if last_update > LIMIT:
-            not_updated_issues.append(issue)
+            labels = [l.name for l in issue.labels]
+            if 'stale' not in labels:
+                not_updated_issues.append(issue)
 
     # fmt: off
     stale_message = (

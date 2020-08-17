@@ -71,7 +71,7 @@ def filter_pull_requests(prs, label=None, milestone=None):
     help="Date that PRs for this release ended.",
 )
 def generate_rst(version, start_date, end_date):
-    token = Path.home() / "pygithub-token"
+    token = Path.home() / "tokens/ross-bott"
     token = token.open().read().replace("\n", "")
 
     g = gh(token)

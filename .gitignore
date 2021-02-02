@@ -74,6 +74,7 @@ doc/cdoc/build
 ./.shelf
 MANIFEST
 .cache
+/venv
 
 # Paver generated files #
 #########################

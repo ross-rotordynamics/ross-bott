@@ -1,5 +1,5 @@
 PyGithub==1.47
-aiohttp==3.6.2
+aiohttp==3.7.4
 gidgethub==4.0.0
 sentry_sdk==0.14.3
 schedule==0.6.0

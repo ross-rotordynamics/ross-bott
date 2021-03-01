@@ -2,12 +2,13 @@
 
 This script uses PyGithub to access the projects PRs and produce the release
 notes based on the PR body text.
+PRs are selected based on the milestone for the release version.
 The texts are converted from md (used on github) to rst (with m2r), so that
 any image or code block is displayed in the release notes.
 
 Usage:
 $ python release_notes.py
-$ Version number x.x.x: 0.2.0
+$ Version number X.Y.Z: 0.2.0
 $ Start date YYYY-MM-DD: 2019-06-06
 $ End date YYYY-MM-DD: 2019-11-29
 """
@@ -59,7 +60,7 @@ def filter_pull_requests(prs, label=None, milestone=None):
 
 
 @click.command()
-@click.option("--version", prompt="Version number x.x.x")
+@click.option("--version", prompt="Version number vX.Y.Z")
 @click.option(
     "--start_date",
     prompt="Start date YYYY-MM-DD",
@@ -80,9 +81,9 @@ def generate_rst(version, start_date, end_date):
     end_date = datetime(*[int(i) for i in end_date.split("-")])
     prs = get_prs(ross_repo, start_date, end_date)
 
-    enhacement_prs = filter_pull_requests(prs, label="enhancement")
-    bug_prs = filter_pull_requests(prs, label="bug")
-    api_change_prs = filter_pull_requests(prs, label="api change")
+    enhacement_prs = filter_pull_requests(prs, label="enhancement", milestone=version)
+    bug_prs = filter_pull_requests(prs, label="bug", milestone=version)
+    api_change_prs = filter_pull_requests(prs, label="api change", milestone=version)
 
     # generate rst from prs
     with open(f"version-{version}.rst", mode="w") as rst:

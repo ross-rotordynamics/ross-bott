@@ -6,3 +6,4 @@ schedule==0.6.0
 boto3==1.12.33
 smart_open==1.10.0
 bokeh==1.4.0
+m2r==0.2.1
